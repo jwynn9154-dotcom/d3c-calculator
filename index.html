@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>D3C Calculator - Post-transplant</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --card: #ffffff;
+    --border: #e2e6ec;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --accent-soft: #dbeafe;
+    --danger: #b91c1c;
+    --ok: #047857;
+    --warn-bg: #fef3c7;
+    --warn-border: #f59e0b;
+    --warn-text: #92400e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 24px;
+    line-height: 1.45;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 { margin: 0 0 4px 0; font-size: 24px; }
+  h2 { font-size: 16px; margin: 0 0 12px 0; color: var(--text); }
+  h3 { font-size: 13px; margin: 12px 0 8px 0; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+  .subtitle { color: var(--muted); margin: 0 0 24px 0; font-size: 14px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .field input, .field select {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: white;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 12px; }
+  .stat {
+    background: #f3f4f6;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  .stat .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat .value { font-size: 18px; font-weight: 600; margin-top: 2px; }
+  .stat .unit { font-size: 12px; color: var(--muted); margin-left: 4px; font-weight: 400; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  th { font-size: 12px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px; background: #fafbfc; }
+  td input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    background: white;
+    border-radius: 4px;
+    font-size: 14px;
+    color: var(--text);
+    font-family: inherit;
+    min-width: 0;
+  }
+  td input[type="number"] {
+    min-width: 80px;
+    text-align: right;
+  }
+  td input.dt-date-input,
+  td input.dt-time-input {
+    font-variant-numeric: tabular-nums;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+  }
+  td input.dt-date-input { min-width: 110px; }
+  td input.dt-time-input { min-width: 70px; text-align: center; }
+  td input:focus { outline: none; border-color: var(--accent); background: white; box-shadow: 0 0 0 2px var(--accent-soft); }
+  td.computed { text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
+  td.d3c { text-align: center; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+  td.static { text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  button {
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text);
+    font-family: inherit;
+  }
+  button:hover { background: #f3f4f6; }
+  button.primary { background: var(--accent); color: white; border-color: var(--accent); }
+  button.primary:hover { background: #1d4ed8; }
+  button.icon { padding: 4px 8px; color: var(--muted); }
+  button.icon:hover { color: var(--danger); }
+
+  .toolbar { display: flex; gap: 8px; margin-top: 12px; align-items: center; flex-wrap: wrap; }
+  .chart-wrap { position: relative; height: 380px; margin-top: 8px; }
+  .help { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .help code { background: #f3f4f6; padding: 1px 4px; border-radius: 3px; font-size: 11px; }
+  .formula {
+    background: #f9fafb;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    margin: 8px 0;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .citation { font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); padding-top: 16px; margin-top: 24px; }
+  .citation em { color: var(--text); }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; font-size: 13px; color: var(--accent); }
+  .section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 500; }
+  .warning-banner {
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    color: var(--warn-text);
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    font-size: 13px;
+  }
+  .flag-pill {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 500;
+    margin-right: 4px;
+  }
+  .flag-tx24 { background: #fee2e2; color: var(--danger); }
+  .flag-short { background: #fef3c7; color: var(--warn-text); }
+  .flag-long { background: #fef3c7; color: var(--warn-text); }
+  .flag-rising { background: #fee2e2; color: var(--danger); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap;">
+    <h1>D3C Calculator - Post-transplant</h1>
+    <span style="font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums;">
+      Version <span style="font-weight: 600; color: var(--text);">0.1.0</span> &middot; 2026-06-10
+    </span>
+  </div>
+  <p class="subtitle">
+    Dynamic creatinine clearance for the early post-kidney-transplant period, when standard CKD-EPI underestimates GFR because serum creatinine is still falling.
+    Formula from Pieters TT et al. <em>Clin Pharmacokinet</em> 59:1303-1311, 2020.
+    <strong>D3C* (mL/min, unindexed)</strong> is the primary number for pharmacy drug dosing.
+  </p>
+
+  <!-- Patient demographics -->
+  <div class="card">
+    <h2>1. Patient demographics</h2>
+    <div class="row">
+      <div class="field">
+        <label for="age">Age (years)</label>
+        <input type="number" id="age" value="55" min="0" max="120" step="1">
+      </div>
+      <div class="field">
+        <label for="sex">Sex</label>
+        <select id="sex">
+          <option value="male" selected>Male</option>
+          <option value="female">Female</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="weight">Dry weight (kg)</label>
+        <input type="number" id="weight" value="70" min="0" max="500" step="0.1">
+      </div>
+      <div class="field">
+        <label for="height">Height (cm)</label>
+        <input type="number" id="height" value="175" min="100" max="230" step="0.5">
+      </div>
+    </div>
+    <div class="help">
+      D3C uses Cockcroft-Gault-derived production rate (so weight matters) and Vd = 0.6 × weight.
+      The eGFR transformation cancels weight out, but D3C* (CrCl mL/min) keeps it.
+      Height is used to de-index CKD-EPI back to raw mL/min for side-by-side comparison.
+    </div>
+  </div>
+
+  <!-- Transplant timing -->
+  <div class="card">
+    <h2>2. Transplant timing &amp; volume status</h2>
+    <div class="row">
+      <div class="field">
+        <label for="txDate">Transplant date <span style="font-size:11px; color:var(--muted); font-weight:400">— MM/DD/YYYY</span></label>
+        <input type="text" id="txDate" placeholder="MM/DD/YYYY"
+               title="Accepts: 05/19/2026 · 5/19/26 · 05192026 · 051926 · 2026-05-19"
+               autocomplete="off" spellcheck="false"
+               style="font-variant-numeric: tabular-nums; font-family: 'SF Mono', Menlo, Consolas, monospace;">
+      </div>
+      <div class="field">
+        <label for="txTime">Transplant time <span style="font-size:11px; color:var(--muted); font-weight:400">— HH:MM (24h)</span></label>
+        <input type="text" id="txTime" placeholder="HH:MM"
+               title="Accepts: 14:30 · 2:30 PM · 1430"
+               autocomplete="off" spellcheck="false"
+               style="font-variant-numeric: tabular-nums; font-family: 'SF Mono', Menlo, Consolas, monospace;">
+      </div>
+      <div class="field">
+        <label for="currentWeight">Current weight (kg) <span style="font-size:11px; color:var(--muted); font-weight:400">— optional, for edema</span></label>
+        <input type="number" id="currentWeight" min="0" max="500" step="0.1" placeholder="(defaults to dry weight)">
+      </div>
+      <div class="field">
+        <label for="donorType">Donor type <span style="font-size:11px; color:var(--muted); font-weight:400">— for display only</span></label>
+        <select id="donorType">
+          <option value="ldkt">Living donor (LDKT)</option>
+          <option value="ddkt-dbd" selected>Deceased donor, DBD</option>
+          <option value="ddkt-dcd">Deceased donor, DCD</option>
+        </select>
+      </div>
+    </div>
+    <div class="help">
+      Any creatinine drawn within 24 hours of the transplant time is flagged as low-confidence because of perioperative fluid shifts.
+      If the patient is volume-overloaded, enter the current weight; Vd will pick up the extra fluid as pure water (production rate stays anchored to dry weight).
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="label">Cr production (CG-derived)</div>
+        <div class="value"><span id="prodRate">-</span><span class="unit">mg/h</span></div>
+        <div style="font-size: 11px; color: var(--muted); margin-top: 4px;"><span id="prodRateDay">-</span> mg/day</div>
+      </div>
+      <div class="stat">
+        <div class="label">Vd (0.6 × weight)</div>
+        <div class="value"><span id="vd">-</span><span class="unit">L</span></div>
+        <div style="font-size: 11px; color: var(--muted); margin-top: 4px;" id="vdBreakdown">&nbsp;</div>
+      </div>
+      <div class="stat">
+        <div class="label">BSA (Mosteller)</div>
+        <div class="value"><span id="bsa">-</span><span class="unit">m²</span></div>
+      </div>
+      <div class="stat">
+        <div class="label">Donor</div>
+        <div class="value" style="font-size: 14px;"><span id="donorLabel">-</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Serial creatinine timeline -->
+  <div class="card">
+    <div class="section-head">
+      <h2>3. Serial creatinine measurements</h2>
+      <span class="pill" id="rowCount">0 rows</span>
+    </div>
+    <div id="dtWarning" class="warning-banner" style="display:none;">
+      ⚠ One or more rows have a date earlier than the previous row. D3C is suppressed for those intervals.
+    </div>
+    <div id="rangeWarning" class="warning-banner" style="display:none; background:#dbeafe; border-color:#3b82f6; color:#1e40af;">
+      ℹ Intervals shorter than 4 hours or longer than 48 hours are flagged. The first because signal-to-noise gets bad; the second because the constant-GFR assumption over the interval starts to break down.
+    </div>
+    <table id="serialTable" style="min-width: 960px;">
+      <thead>
+        <tr>
+          <th style="width: 13%; min-width: 130px;">Date<br><span style="font-weight:400; font-size:10px; color:var(--muted)">MM/DD/YYYY or MMDDYYYY</span></th>
+          <th style="width: 9%; min-width: 90px;">Time<br><span style="font-weight:400; font-size:10px; color:var(--muted)">HH:MM (24h)</span></th>
+          <th style="width: 6%; text-align: center;">Δt (h)</th>
+          <th style="width: 10%; min-width: 90px;">P<sub>Cr</sub> (mg/dL)</th>
+          <th style="width: 6%; text-align: center;">ΔP<sub>Cr</sub></th>
+          <th style="width: 14%; text-align: center; background:#eff6ff;">D3C* (mL/min)<br><span style="font-weight:400; font-size:10px; color:var(--muted)">unindexed - pharmacy</span></th>
+          <th style="width: 11%; text-align: center;">D3C eGFR<br><span style="font-weight:400; font-size:10px; color:var(--muted)">mL/min/1.73 m²</span></th>
+          <th style="width: 11%; text-align: center;">Static CKD-EPI<br><span style="font-weight:400; font-size:10px; color:var(--muted)">raw mL/min</span></th>
+          <th style="width: 10%;">Flags</th>
+          <th style="width: 10%;"></th>
+        </tr>
+      </thead>
+      <tbody id="serialBody"></tbody>
+    </table>
+    <div class="toolbar">
+      <button class="primary" id="addRow">+ Add measurement</button>
+      <button id="recalculate" title="Force recalculation (also runs automatically on any input change)">↻ Recalculate</button>
+      <span id="recalcFlash" style="display:none; color: var(--ok); font-size: 13px; font-weight: 500;">✓ Updated</span>
+      <span style="flex: 1;"></span>
+      <button id="loadLdkt">Load LDKT EGF example</button>
+      <button id="loadDdkt">Load DDKT slow-recovery example</button>
+      <button id="clearRows" title="Wipes all patient inputs and measurements; prompts for confirmation">Clear all (new patient)</button>
+    </div>
+    <div class="help">Calculations update automatically when you change any input. The first row has no D3C (need two measurements per interval).</div>
+  </div>
+
+  <!-- Chart -->
+  <div class="card">
+    <h2>4. Trajectory</h2>
+    <div class="chart-wrap"><div id="chart" style="width:100%; height:100%;"></div></div>
+  </div>
+
+  <!-- Interpretation hints -->
+  <div class="card">
+    <h2>How to read this</h2>
+    <div style="font-size: 13px; line-height: 1.6;">
+      <p style="margin: 0 0 8px 0;">
+        <strong>D3C* mL/min</strong> is the dynamic creatinine clearance. It's the number to use for drug dose adjustments while creatinine is still falling. Compare against the static CKD-EPI column: in the first 2 to 3 days post-transplant, D3C* should be substantially higher, which is the whole point of the dynamic formula.
+      </p>
+      <p style="margin: 0 0 8px 0;">
+        <strong>D3C eGFR (mL/min/1.73 m²)</strong> is the same calculation rewritten to slot directly into the CKD-EPI framework. Use this when you want a single number that means the same thing as the eGFR the patient will have at steady state. Weight cancels out of this form (per Pieters), so it doesn't depend on dry weight accuracy.
+      </p>
+      <p style="margin: 0 0 8px 0;">
+        <strong>Once daily Cr change drops below ~5%</strong>, you've effectively reached steady state and standard CKD-EPI is fine. The dynamic and static columns should converge.
+      </p>
+      <p style="margin: 0;">
+        <strong>If creatinine is rising</strong> (negative D3C* trend), the formula still computes correctly, but the constant-GFR-over-the-interval assumption is shakier. Tighten the sampling interval (q8 to q12h) for allograft AKI workup. The "rising" flag marks intervals where Cr increased by more than 10%.
+      </p>
+    </div>
+  </div>
+
+  <!-- Formulas -->
+  <div class="card">
+    <h2>Formulas reference</h2>
+    <details open>
+      <summary>D3C* (unindexed CrCl in mL/min)</summary>
+      <div class="formula">D3C* = [Pcr − Vd × (ΔC/ΔT)] / C_geomean
+
+Pcr (mg/h)  = (140 − age) × weight × sexFactor / 120
+Vd (dL)     = 6 × weight        (0.6 L/kg, in dL since C is in mg/dL)
+ΔC (mg/dL)  = C2 − C1
+ΔT (h)      = hours between draws
+C_geomean   = √(C1 × C2)  in mg/dL
+sexFactor   = 1 for male, 0.85 for female
+
+Numerator units: mg/h
+Denominator units: mg/dL
+Result: dL/h × (100 mL/dL ÷ 60 min/h) = mL/min</div>
+    </details>
+    <details>
+      <summary>D3C eGFR (mL/min/1.73 m²) via back-calculated Css</summary>
+      <div class="formula">Css (μmol/L) = C_geomean × (140 − A) × k
+                / [k × (140 − A) − 0.6 × (ΔC / ΔT)]
+
+k = 0.07362  (male)
+k = 0.06258  (female)
+C_geomean and ΔC are in μmol/L (mg/dL × 88.4)
+ΔT in hours
+
+Then run Css (mg/dL) through CKD-EPI 2021 to get D3C eGFR.
+Weight cancels out of this form.</div>
+    </details>
+    <details>
+      <summary>CKD-EPI 2021 (race-free)</summary>
+      <div class="formula">eGFR = 142 × min(PCr/κ, 1)^α × max(PCr/κ, 1)^(−1.200)
+            × 0.9938^age × (1.012 if female)
+
+Female: κ = 0.7, α = −0.241
+Male:   κ = 0.9, α = −0.302</div>
+      <div class="help">Inker LA et al. <em>N Engl J Med</em> 385:1737-1749, 2021.</div>
+    </details>
+    <details>
+      <summary>Mosteller BSA</summary>
+      <div class="formula">BSA (m²) = √(height_cm × weight_kg / 3600)</div>
+    </details>
+  </div>
+
+  <p class="citation">
+    Pieters TT, Beele P, Van Zuilen AD, Verhaar MC, Huitema ADR, Rookmaaker MB.
+    Early Estimation of Renal Function After Transplantation to Enable Appropriate Dosing of Critical Drugs.
+    <em>Clin Pharmacokinet</em> 59:1303-1311, 2020. doi:10.1007/s40262-020-00893-z
+  </p>
+</div>
+
+<script>
+// ============ Calculation helpers ============
+function ckdEpi2021({age, sex, sCr}) {
+  if (!(age > 0 && sCr > 0)) return null;
+  const isFemale = sex === 'female';
+  const kappa = isFemale ? 0.7 : 0.9;
+  const alpha = isFemale ? -0.241 : -0.302;
+  const ratio = sCr / kappa;
+  const minTerm = Math.pow(Math.min(ratio, 1), alpha);
+  const maxTerm = Math.pow(Math.max(ratio, 1), -1.200);
+  const ageTerm = Math.pow(0.9938, age);
+  const sexFactor = isFemale ? 1.012 : 1;
+  return 142 * minTerm * maxTerm * ageTerm * sexFactor;
+}
+
+function bsaMosteller(heightCm, weightKg) {
+  if (!(heightCm > 0 && weightKg > 0)) return null;
+  return Math.sqrt(heightCm * weightKg / 3600);
+}
+
+// Cockcroft-Gault-derived creatinine production rate, in mg/h.
+// Derived: Pcr (mg/day) = 0.2 × W × (140 − age) × sexFactor
+//          Pcr (mg/h) = (140 − age) × W × sexFactor / 120
+function cgProductionPerHour({age, sex, weight}) {
+  if (!(age > 0 && weight > 0)) return null;
+  const sexFactor = sex === 'female' ? 0.85 : 1;
+  return (140 - age) * weight * sexFactor / 120;
+}
+
+// D3C* — unindexed creatinine clearance in mL/min.
+function d3cStar({age, sex, dryWeight, currentWeight, c1, c2, dtHours}) {
+  if (!(age > 0 && dryWeight > 0 && c1 > 0 && c2 > 0 && dtHours > 0)) return null;
+  const pcrPerHour = cgProductionPerHour({age, sex, weight: dryWeight});
+  if (pcrPerHour === null) return null;
+  // Vd in dL: 6 × kg (0.6 L/kg → 6 dL/kg). Use current weight for Vd if heavier (edema).
+  const vdWeightKg = (currentWeight > dryWeight) ? currentWeight : dryWeight;
+  const vdDl = 6 * vdWeightKg;
+  const cMean = Math.sqrt(c1 * c2);
+  const dCdT = (c2 - c1) / dtHours;
+  const numerator = pcrPerHour - vdDl * dCdT;  // mg/h
+  const d3cDlPerH = numerator / cMean;  // dL/h
+  return d3cDlPerH * 100 / 60;  // mL/min
+}
+
+// Back-calculate steady-state creatinine (Pieters Eq. 6/7) in mg/dL.
+// Returns null if the denominator goes non-positive (rapidly falling Cr beyond the
+// formula's domain — happens rarely with very steep slopes).
+function backCalcCss({age, sex, c1, c2, dtHours}) {
+  if (!(age > 0 && c1 > 0 && c2 > 0 && dtHours > 0)) return null;
+  // Convert to μmol/L
+  const c1u = c1 * 88.4;
+  const c2u = c2 * 88.4;
+  const cgeo = Math.sqrt(c1u * c2u);
+  const dC = c2u - c1u;
+  const dCdT = dC / dtHours;
+  const k = sex === 'female' ? 0.06258 : 0.07362;
+  const denom = k * (140 - age) - 0.6 * dCdT;
+  if (denom <= 0) return null;
+  const cssUmolL = cgeo * (140 - age) * k / denom;
+  return cssUmolL / 88.4;  // back to mg/dL
+}
+
+// D3C eGFR (mL/min/1.73 m²): Css → CKD-EPI 2021.
+function d3cEgfr({age, sex, c1, c2, dtHours}) {
+  const css = backCalcCss({age, sex, c1, c2, dtHours});
+  if (css === null || css <= 0) return null;
+  return ckdEpi2021({age, sex, sCr: css});
+}
+
+// ============ Datetime helpers (reused from KeGFR calculator) ============
+function fmtDatetimeLocal(d) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function splitDt(s) {
+  if (!s) return { date: '', time: '' };
+  const [date, time] = s.split('T');
+  return { date: date || '', time: time || '' };
+}
+function combineDt(date, time) {
+  if (!date) return '';
+  return `${date}T${time || '00:00'}`;
+}
+function makeIsoDt(y, mo, d, h, mi) {
+  if (mo < 1 || mo > 12) return null;
+  if (d < 1 || d > 31) return null;
+  if (h < 0 || h > 23) return null;
+  if (mi < 0 || mi > 59) return null;
+  if (y < 1900 || y > 2100) return null;
+  const pad = n => String(n).padStart(2, '0');
+  return `${y}-${pad(mo)}-${pad(d)}T${pad(h)}:${pad(mi)}`;
+}
+function fmtDateDisplay(iso) {
+  if (!iso) return '';
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : '';
+}
+function fmtTimeDisplay(iso) {
+  if (!iso) return '';
+  const m = iso.match(/T(\d{2}):(\d{2})/);
+  return m ? `${m[1]}:${m[2]}` : '';
+}
+function parseDateInput(input) {
+  if (input == null) return null;
+  const s = String(input).trim();
+  if (!s) return '';
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return validatedDate(+m[1], +m[2], +m[3]);
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (m) {
+    let y = +m[3];
+    if (m[3].length === 2) y += 2000;
+    return validatedDate(y, +m[1], +m[2]);
+  }
+  m = s.match(/^(\d{2})(\d{2})(\d{2}|\d{4})$/);
+  if (m) {
+    let y = +m[3];
+    if (m[3].length === 2) y += 2000;
+    return validatedDate(y, +m[1], +m[2]);
+  }
+  return null;
+}
+function validatedDate(y, mo, d) {
+  if (y < 1900 || y > 2100) return null;
+  if (mo < 1 || mo > 12) return null;
+  if (d < 1 || d > 31) return null;
+  const pad = n => String(n).padStart(2, '0');
+  return `${y}-${pad(mo)}-${pad(d)}`;
+}
+function parseTimeInput(input) {
+  if (input == null) return null;
+  const s = String(input).trim();
+  if (!s) return '';
+  let m = s.match(/^(\d{1,2}):(\d{2})$/);
+  if (m) return validatedTime(+m[1], +m[2]);
+  m = s.match(/^(\d{1,2}):(\d{2})\s*([AaPp])\.?[Mm]\.?$/);
+  if (m) {
+    let h = +m[1];
+    const isAm = m[3].toUpperCase() === 'A';
+    if (h === 12) h = isAm ? 0 : 12;
+    else if (!isAm) h += 12;
+    return validatedTime(h, +m[2]);
+  }
+  m = s.match(/^(\d{4})$/);
+  if (m) return validatedTime(+m[1].substring(0, 2), +m[1].substring(2, 4));
+  return null;
+}
+function validatedTime(h, mi) {
+  if (h < 0 || h > 23) return null;
+  if (mi < 0 || mi > 59) return null;
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(h)}:${pad(mi)}`;
+}
+function parseDatetime(s) {
+  if (!s) return null;
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+function diffHours(later, earlier) {
+  const d1 = parseDatetime(later);
+  const d2 = parseDatetime(earlier);
+  if (!d1 || !d2) return null;
+  return (d1 - d2) / (1000 * 60 * 60);
+}
+
+// ============ State ============
+let rows = [];
+
+function readInputs() {
+  return {
+    age: parseFloat(document.getElementById('age').value),
+    sex: document.getElementById('sex').value,
+    weight: parseFloat(document.getElementById('weight').value),
+    height: parseFloat(document.getElementById('height').value),
+    currentWeight: parseFloat(document.getElementById('currentWeight').value),
+    donorType: document.getElementById('donorType').value,
+    txDatetime: readTxDatetime(),
+  };
+}
+function readTxDatetime() {
+  const d = parseDateInput(document.getElementById('txDate').value);
+  const t = parseTimeInput(document.getElementById('txTime').value);
+  if (!d || !t) return '';
+  return combineDt(d, t);
+}
+function setTxDatetime(iso) {
+  document.getElementById('txDate').value = iso ? fmtDateDisplay(iso) : '';
+  document.getElementById('txTime').value = iso ? fmtTimeDisplay(iso) : '';
+}
+
+function fmt(n, digits = 2) {
+  if (n === null || n === undefined || isNaN(n)) return '-';
+  return n.toFixed(digits);
+}
+
+// ============ Render ============
+function renderDemographics() {
+  const inputs = readInputs();
+  const prodH = cgProductionPerHour({age: inputs.age, sex: inputs.sex, weight: inputs.weight});
+  const prodDay = prodH !== null ? prodH * 24 : null;
+  const vdBase = inputs.weight * 0.6;  // L
+  const edemaKg = (inputs.currentWeight > 0 && inputs.currentWeight > inputs.weight)
+    ? inputs.currentWeight - inputs.weight : 0;
+  const vd = vdBase + edemaKg;  // L (extra kg added as 1 L each)
+  const bsa = bsaMosteller(inputs.height, inputs.weight);
+
+  document.getElementById('prodRate').textContent = fmt(prodH, 1);
+  document.getElementById('prodRateDay').textContent = prodDay ? Math.round(prodDay).toLocaleString() : '-';
+  document.getElementById('vd').textContent = fmt(vd, 1);
+  document.getElementById('bsa').textContent = fmt(bsa, 2);
+
+  const vdBreakEl = document.getElementById('vdBreakdown');
+  if (edemaKg > 0) {
+    vdBreakEl.innerHTML = `Base ${fmt(vdBase, 1)} L + ${fmt(edemaKg, 1)} L edema`;
+    vdBreakEl.style.color = 'var(--danger)';
+  } else {
+    vdBreakEl.innerHTML = '&nbsp;';
+    vdBreakEl.style.color = 'var(--muted)';
+  }
+
+  const donorLabels = {
+    'ldkt': 'Living donor',
+    'ddkt-dbd': 'Deceased / DBD',
+    'ddkt-dcd': 'Deceased / DCD',
+  };
+  document.getElementById('donorLabel').textContent = donorLabels[inputs.donorType] || '-';
+}
+
+function renderSerialTable() {
+  const inputs = readInputs();
+  const tbody = document.getElementById('serialBody');
+  tbody.innerHTML = '';
+
+  let hasNegativeDt = false;
+  let hasRangeIssue = false;
+  const bsa = bsaMosteller(inputs.height, inputs.weight);
+  const bsaFactor = bsa ? bsa / 1.73 : null;
+
+  rows.forEach((r, i) => {
+    const prev = i > 0 ? rows[i - 1] : null;
+    let dtTxt = '', dtCellStyle = '', deltaCr = '';
+    let d3cStarVal = '', d3cEgfrVal = '';
+    let flags = [];
+    let dtIsNegative = false;
+
+    if (prev) {
+      const dtH = diffHours(r.datetime, prev.datetime);
+      const dCr = r.cr - prev.cr;
+      deltaCr = (dCr >= 0 ? '+' : '') + fmt(dCr, 2);
+      if (dtH === null) {
+        dtTxt = '-';
+      } else if (dtH <= 0) {
+        dtTxt = fmt(dtH, 2);
+        dtIsNegative = true;
+        hasNegativeDt = true;
+        dtCellStyle = 'color: var(--danger); font-weight: 600;';
+        d3cStarVal = '<span style="color: var(--danger);" title="Date is earlier than previous row">—</span>';
+        d3cEgfrVal = '<span style="color: var(--danger);">—</span>';
+      } else {
+        dtTxt = fmt(dtH, 2);
+        const d3cs = d3cStar({
+          age: inputs.age, sex: inputs.sex,
+          dryWeight: inputs.weight, currentWeight: inputs.currentWeight,
+          c1: prev.cr, c2: r.cr, dtHours: dtH,
+        });
+        const d3ce = d3cEgfr({age: inputs.age, sex: inputs.sex, c1: prev.cr, c2: r.cr, dtHours: dtH});
+        d3cStarVal = fmt(d3cs, 1);
+        d3cEgfrVal = fmt(d3ce, 1);
+
+        // Interval-length flags
+        if (dtH < 4) { flags.push('<span class="flag-pill flag-short" title="Δt under 4h - signal-to-noise concern">short Δt</span>'); hasRangeIssue = true; }
+        if (dtH > 48) { flags.push('<span class="flag-pill flag-long" title="Δt over 48h - assumption of constant GFR over interval may not hold">long Δt</span>'); hasRangeIssue = true; }
+
+        // Rising-Cr flag (>10% increase between consecutive measurements)
+        if (dCr > 0 && r.cr / prev.cr > 1.10) {
+          flags.push('<span class="flag-pill flag-rising" title="Cr rose >10% - consider allograft AKI workup; tighten sampling interval">rising</span>');
+        }
+      }
+    }
+
+    // Static CKD-EPI on this Cr, de-indexed to raw mL/min
+    let staticEgfr = '-';
+    const ckdRaw = ckdEpi2021({age: inputs.age, sex: inputs.sex, sCr: r.cr});
+    if (ckdRaw && bsaFactor) {
+      staticEgfr = fmt(ckdRaw * bsaFactor, 1);
+    } else if (ckdRaw) {
+      staticEgfr = `${fmt(ckdRaw, 1)}<span style="font-size:9px;color:var(--muted)"> /1.73m²</span>`;
+    }
+
+    // 24h post-transplant flag
+    if (inputs.txDatetime) {
+      const hrsFromTx = diffHours(r.datetime, inputs.txDatetime);
+      if (hrsFromTx !== null && hrsFromTx >= 0 && hrsFromTx <= 24) {
+        flags.push('<span class="flag-pill flag-tx24" title="Within 24h of transplant - perioperative fluid shifts make this value low-confidence">&lt;24h</span>');
+      }
+    }
+
+    const dateDisp = fmtDateDisplay(r.datetime);
+    const timeDisp = fmtTimeDisplay(r.datetime);
+    const rowBg = dtIsNegative ? 'background: #fef2f2;' : '';
+    const tr = document.createElement('tr');
+    if (rowBg) tr.setAttribute('style', rowBg);
+    tr.innerHTML = `
+      <td><input type="text" class="dt-date-input" value="${dateDisp}" data-i="${i}" data-k="date"
+                 placeholder="MM/DD/YYYY" autocomplete="off" spellcheck="false"></td>
+      <td><input type="text" class="dt-time-input" value="${timeDisp}" data-i="${i}" data-k="time"
+                 placeholder="HH:MM" autocomplete="off" spellcheck="false"></td>
+      <td class="computed" style="${dtCellStyle}">${dtTxt}</td>
+      <td><input type="number" step="0.01" value="${r.cr}" data-i="${i}" data-k="cr"></td>
+      <td class="computed">${deltaCr}</td>
+      <td class="d3c" style="background:#eff6ff;">${d3cStarVal}</td>
+      <td class="d3c">${d3cEgfrVal}</td>
+      <td class="static">${staticEgfr}</td>
+      <td>${flags.join(' ')}</td>
+      <td><button class="icon" data-del="${i}">✕ remove</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('dtWarning').style.display = hasNegativeDt ? 'block' : 'none';
+  document.getElementById('rangeWarning').style.display = hasRangeIssue ? 'block' : 'none';
+  document.getElementById('rowCount').textContent = `${rows.length} row${rows.length === 1 ? '' : 's'}`;
+
+  tbody.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('change', (e) => {
+      const i = parseInt(e.target.dataset.i);
+      const k = e.target.dataset.k;
+      const flashError = () => {
+        e.target.style.background = '#fef2f2';
+        e.target.style.borderColor = 'var(--danger)';
+        setTimeout(() => renderSerialTable(), 1200);
+      };
+      if (k === 'date') {
+        const parsed = parseDateInput(e.target.value);
+        if (parsed === null) { flashError(); return; }
+        const cur = splitDt(rows[i].datetime);
+        rows[i].datetime = combineDt(parsed, cur.time);
+      } else if (k === 'time') {
+        const parsed = parseTimeInput(e.target.value);
+        if (parsed === null) { flashError(); return; }
+        const cur = splitDt(rows[i].datetime);
+        rows[i].datetime = combineDt(cur.date, parsed);
+      } else if (k === 'cr') {
+        const v = parseFloat(e.target.value);
+        if (!isNaN(v)) rows[i].cr = v;
+      }
+      renderSerialTable();
+      renderChart();
+    });
+  });
+  tbody.querySelectorAll('button[data-del]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const i = parseInt(e.target.dataset.del);
+      rows.splice(i, 1);
+      renderSerialTable();
+      renderChart();
+    });
+  });
+}
+
+// ============ Chart ============
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtTickDate(d, showTime) {
+  const pad = n => String(n).padStart(2, '0');
+  const base = `${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}`;
+  return showTime ? `${base} ${pad(d.getHours())}:${pad(d.getMinutes())}` : base;
+}
+function pickDateTicks(t0, hoursMin, hoursMax) {
+  const totalHours = hoursMax - hoursMin;
+  const ticks = [];
+  const t0Ms = t0.getTime();
+  const advance = (date, step, unit) => {
+    if (unit === 'hour') date.setHours(date.getHours() + step);
+    else if (unit === 'day') date.setDate(date.getDate() + step);
+    else if (unit === 'week') date.setDate(date.getDate() + 7 * step);
+  };
+  let step, unit, showTime, snapToHour;
+  if (totalHours <= 12)       { step = 2;  unit = 'hour'; showTime = true;  snapToHour = true; }
+  else if (totalHours <= 36)  { step = 6;  unit = 'hour'; showTime = true;  snapToHour = true; }
+  else if (totalHours <= 96)  { step = 12; unit = 'hour'; showTime = true;  snapToHour = true; }
+  else if (totalHours <= 14*24) { step = 1; unit = 'day'; showTime = false; snapToHour = false; }
+  else                          { step = 1; unit = 'week'; showTime = false; snapToHour = false; }
+  let d = new Date(t0);
+  if (snapToHour) {
+    d.setMinutes(0, 0, 0);
+    if (unit === 'hour') {
+      const h = d.getHours();
+      d.setHours(h - (h % step));
+    }
+  } else {
+    d.setHours(0, 0, 0, 0);
+  }
+  const minMs = t0Ms + hoursMin * 3600000;
+  const maxMs = t0Ms + hoursMax * 3600000;
+  while (d.getTime() < minMs) advance(d, step, unit);
+  let guard = 100;
+  while (d.getTime() <= maxMs && guard-- > 0) {
+    const h = (d.getTime() - t0Ms) / 3600000;
+    ticks.push({ hours: h, label: fmtTickDate(d, showTime) });
+    advance(d, step, unit);
+  }
+  return ticks;
+}
+function niceUpper(max, ticks = 5) {
+  if (!(max > 0)) return 1;
+  const rough = max / ticks;
+  const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+  const norm = rough / mag;
+  let nice;
+  if (norm < 1.5) nice = 1;
+  else if (norm < 3) nice = 2;
+  else if (norm < 7) nice = 5;
+  else nice = 10;
+  const step = nice * mag;
+  return Math.ceil(max / step) * step;
+}
+
+function renderChart() {
+  const inputs = readInputs();
+  const container = document.getElementById('chart');
+  const bsa = bsaMosteller(inputs.height, inputs.weight);
+  const bsaFactor = bsa ? bsa / 1.73 : null;
+
+  const valid = rows.filter(r => parseDatetime(r.datetime) !== null);
+  if (valid.length === 0) {
+    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;font-size:13px;">Add measurements with dates to see the trajectory</div>';
+    return;
+  }
+
+  const t0 = parseDatetime(valid[0].datetime);
+  const hoursFrom = dtStr => (parseDatetime(dtStr) - t0) / (1000 * 60 * 60);
+
+  const points = valid.map((r, i) => {
+    const time = hoursFrom(r.datetime);
+    let d3c = null, staticCkd = null;
+    if (i > 0) {
+      const prev = valid[i - 1];
+      const dtH = diffHours(r.datetime, prev.datetime);
+      if (dtH > 0) {
+        d3c = d3cStar({
+          age: inputs.age, sex: inputs.sex,
+          dryWeight: inputs.weight, currentWeight: inputs.currentWeight,
+          c1: prev.cr, c2: r.cr, dtHours: dtH,
+        });
+      }
+    }
+    const ckdRaw = ckdEpi2021({age: inputs.age, sex: inputs.sex, sCr: r.cr});
+    if (ckdRaw !== null && bsaFactor) staticCkd = ckdRaw * bsaFactor;
+    return { time, cr: r.cr, d3c, staticCkd };
+  });
+
+  const txHours = inputs.txDatetime ? hoursFrom(inputs.txDatetime) : null;
+
+  const W = 800, H = 380;
+  const margin = { top: 36, right: 70, bottom: 50, left: 60 };
+  const innerW = W - margin.left - margin.right;
+  const innerH = H - margin.top - margin.bottom;
+
+  const times = points.map(p => p.time);
+  let xMin = Math.min(...times);
+  let xMax = Math.max(...times);
+  if (txHours !== null) {
+    xMin = Math.min(xMin, txHours);
+    xMax = Math.max(xMax, txHours + 6);
+  }
+  if (xMin === xMax) xMax = xMin + 1;
+  const xPad = (xMax - xMin) * 0.03;
+  xMin -= xPad;
+  xMax += xPad;
+
+  const crVals = points.map(p => p.cr).filter(Number.isFinite);
+  const clearVals = points.flatMap(p => [p.d3c, p.staticCkd]).filter(Number.isFinite);
+  const crUpper = niceUpper(crVals.length ? Math.max(...crVals) : 10);
+  const clearUpper = niceUpper(clearVals.length ? Math.max(...clearVals) : 100);
+
+  const sx = t => margin.left + ((t - xMin) / (xMax - xMin)) * innerW;
+  const syCr = c => margin.top + innerH - (c / crUpper) * innerH;
+  const syClear = k => margin.top + innerH - (k / clearUpper) * innerH;
+
+  const parts = [];
+
+  if (txHours !== null) {
+    const x1 = sx(txHours);
+    const x2 = sx(txHours + 24);
+    const cx1 = Math.max(x1, margin.left);
+    const cx2 = Math.min(x2, margin.left + innerW);
+    if (cx2 > cx1) {
+      parts.push(`<rect x="${cx1}" y="${margin.top}" width="${cx2 - cx1}" height="${innerH}" fill="rgba(185,28,28,0.07)" stroke="rgba(185,28,28,0.35)" stroke-width="1" stroke-dasharray="4 3"/>`);
+      parts.push(`<text x="${cx1 + 6}" y="${margin.top + 12}" font-size="10" fill="rgba(185,28,28,0.85)">First 24h post-transplant (low confidence)</text>`);
+    }
+    if (x1 >= margin.left && x1 <= margin.left + innerW) {
+      parts.push(`<line x1="${x1}" y1="${margin.top}" x2="${x1}" y2="${margin.top + innerH}" stroke="rgba(185,28,28,0.6)" stroke-width="1.5"/>`);
+    }
+  }
+
+  const nTicks = 5;
+  for (let i = 0; i <= nTicks; i++) {
+    const vCr = (i / nTicks) * crUpper;
+    const vK = (i / nTicks) * clearUpper;
+    const y = margin.top + innerH - (i / nTicks) * innerH;
+    parts.push(`<line x1="${margin.left}" y1="${y}" x2="${margin.left + innerW}" y2="${y}" stroke="#e5e7eb" stroke-width="1"/>`);
+    parts.push(`<text x="${margin.left - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="#2563eb">${vCr.toFixed(crUpper >= 10 ? 0 : 1)}</text>`);
+    parts.push(`<text x="${margin.left + innerW + 8}" y="${y + 4}" text-anchor="start" font-size="11" fill="#7c3aed">${vK.toFixed(0)}</text>`);
+  }
+
+  const dateTicks = pickDateTicks(t0, xMin, xMax);
+  const maxLabels = 10;
+  const stride = Math.max(1, Math.ceil(dateTicks.length / maxLabels));
+  dateTicks.forEach((tick, idx) => {
+    const x = sx(tick.hours);
+    if (x < margin.left - 1 || x > margin.left + innerW + 1) return;
+    parts.push(`<line x1="${x}" y1="${margin.top + innerH}" x2="${x}" y2="${margin.top + innerH + 4}" stroke="#9ca3af"/>`);
+    if (idx % stride === 0) {
+      parts.push(`<text x="${x}" y="${margin.top + innerH + 18}" text-anchor="middle" font-size="11" fill="#6b7280">${tick.label}</text>`);
+    }
+  });
+
+  parts.push(`<line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${margin.top + innerH}" stroke="#374151" stroke-width="1"/>`);
+  parts.push(`<line x1="${margin.left + innerW}" y1="${margin.top}" x2="${margin.left + innerW}" y2="${margin.top + innerH}" stroke="#374151" stroke-width="1"/>`);
+  parts.push(`<line x1="${margin.left}" y1="${margin.top + innerH}" x2="${margin.left + innerW}" y2="${margin.top + innerH}" stroke="#374151" stroke-width="1"/>`);
+
+  let xLab = 'Date & time';
+  if (txHours !== null && inputs.txDatetime) {
+    const txD = parseDatetime(inputs.txDatetime);
+    if (txD) xLab = `Date & time (transplant: ${fmtTickDate(txD, true)})`;
+  }
+  parts.push(`<text x="${margin.left + innerW / 2}" y="${H - 12}" text-anchor="middle" font-size="12" fill="#374151">${xLab}</text>`);
+  parts.push(`<text x="16" y="${margin.top + innerH / 2}" text-anchor="middle" font-size="12" fill="#2563eb" transform="rotate(-90 16 ${margin.top + innerH / 2})">Serum Cr (mg/dL)</text>`);
+  parts.push(`<text x="${W - 16}" y="${margin.top + innerH / 2}" text-anchor="middle" font-size="12" fill="#7c3aed" transform="rotate(-90 ${W - 16} ${margin.top + innerH / 2})">Clearance (mL/min)</text>`);
+
+  // Cr line + points
+  const crPath = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${sx(p.time).toFixed(1)},${syCr(p.cr).toFixed(1)}`).join(' ');
+  parts.push(`<path d="${crPath}" stroke="#2563eb" stroke-width="2" fill="none"/>`);
+  points.forEach(p => {
+    parts.push(`<circle cx="${sx(p.time).toFixed(1)}" cy="${syCr(p.cr).toFixed(1)}" r="3.5" fill="#2563eb" stroke="white" stroke-width="1"><title>t=${p.time.toFixed(1)}h, Cr=${p.cr.toFixed(2)} mg/dL</title></circle>`);
+  });
+
+  // D3C* line + points
+  const d3cPts = points.filter(p => Number.isFinite(p.d3c));
+  if (d3cPts.length >= 2) {
+    const d3cPath = d3cPts.map((p, i) => `${i === 0 ? 'M' : 'L'}${sx(p.time).toFixed(1)},${syClear(p.d3c).toFixed(1)}`).join(' ');
+    parts.push(`<path d="${d3cPath}" stroke="#7c3aed" stroke-width="2.5" fill="none"/>`);
+  }
+  d3cPts.forEach(p => {
+    parts.push(`<circle cx="${sx(p.time).toFixed(1)}" cy="${syClear(p.d3c).toFixed(1)}" r="4" fill="#7c3aed" stroke="white" stroke-width="1.5"><title>t=${p.time.toFixed(1)}h, D3C*=${p.d3c.toFixed(1)} mL/min</title></circle>`);
+  });
+
+  // Static CKD-EPI line (dashed, gray) for comparison
+  const ckdPts = points.filter(p => Number.isFinite(p.staticCkd));
+  if (ckdPts.length >= 2) {
+    const ckdPath = ckdPts.map((p, i) => `${i === 0 ? 'M' : 'L'}${sx(p.time).toFixed(1)},${syClear(p.staticCkd).toFixed(1)}`).join(' ');
+    parts.push(`<path d="${ckdPath}" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="4 3" fill="none"/>`);
+  }
+  ckdPts.forEach(p => {
+    parts.push(`<circle cx="${sx(p.time).toFixed(1)}" cy="${syClear(p.staticCkd).toFixed(1)}" r="2.5" fill="white" stroke="#9ca3af" stroke-width="1.5"><title>t=${p.time.toFixed(1)}h, Static CKD-EPI=${p.staticCkd.toFixed(1)} mL/min</title></circle>`);
+  });
+
+  // Legend
+  const lx = margin.left + 12;
+  const ly = margin.top - 18;
+  parts.push(`<g font-size="11" fill="#374151">`);
+  parts.push(`<rect x="${lx-6}" y="${ly-12}" width="320" height="20" rx="3" fill="white" stroke="#e5e7eb"/>`);
+  parts.push(`<line x1="${lx}" y1="${ly-2}" x2="${lx+16}" y2="${ly-2}" stroke="#2563eb" stroke-width="2"/>`);
+  parts.push(`<circle cx="${lx+8}" cy="${ly-2}" r="3" fill="#2563eb"/>`);
+  parts.push(`<text x="${lx+22}" y="${ly+2}">Cr</text>`);
+  parts.push(`<line x1="${lx+50}" y1="${ly-2}" x2="${lx+66}" y2="${ly-2}" stroke="#7c3aed" stroke-width="2.5"/>`);
+  parts.push(`<circle cx="${lx+58}" cy="${ly-2}" r="3.5" fill="#7c3aed"/>`);
+  parts.push(`<text x="${lx+72}" y="${ly+2}">D3C*</text>`);
+  parts.push(`<line x1="${lx+115}" y1="${ly-2}" x2="${lx+131}" y2="${ly-2}" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="3 2"/>`);
+  parts.push(`<text x="${lx+136}" y="${ly+2}">Static CKD-EPI (lags in non-steady state)</text>`);
+  parts.push(`</g>`);
+
+  const svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:100%; display:block; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">${parts.join('')}</svg>`;
+  container.innerHTML = svg;
+}
+
+function renderAll() {
+  renderDemographics();
+  renderSerialTable();
+  renderChart();
+}
+
+// ============ Event wiring ============
+const watchedIds = ['#age', '#sex', '#weight', '#height', '#currentWeight', '#donorType', '#txDate', '#txTime'];
+document.querySelectorAll(watchedIds.join(', ')).forEach(el => {
+  el.addEventListener('input', renderAll);
+  el.addEventListener('change', renderAll);
+});
+
+[['txDate', parseDateInput, fmtDateDisplay],
+ ['txTime', parseTimeInput, v => v]].forEach(([id, parser, formatter]) => {
+  const el = document.getElementById(id);
+  el.addEventListener('change', () => {
+    const raw = el.value.trim();
+    if (!raw) return;
+    const parsed = parser(raw);
+    if (parsed === null) {
+      el.style.background = '#fef2f2';
+      el.style.borderColor = 'var(--danger)';
+      setTimeout(() => {
+        el.value = '';
+        el.style.background = '';
+        el.style.borderColor = '';
+        renderAll();
+      }, 1000);
+    } else if (parsed) {
+      el.value = formatter(parsed);
+      el.style.background = '';
+      el.style.borderColor = '';
+    }
+  });
+});
+
+document.getElementById('addRow').addEventListener('click', () => {
+  const last = rows[rows.length - 1];
+  let newDatetime;
+  if (last && parseDatetime(last.datetime)) {
+    const d = parseDatetime(last.datetime);
+    d.setHours(d.getHours() + 24);
+    newDatetime = fmtDatetimeLocal(d);
+  } else {
+    const d = new Date();
+    d.setMinutes(0, 0, 0);
+    newDatetime = fmtDatetimeLocal(d);
+  }
+  const newCr = last ? last.cr : 5.0;
+  rows.push({ datetime: newDatetime, cr: newCr });
+  renderSerialTable();
+  renderChart();
+});
+
+document.getElementById('clearRows').addEventListener('click', () => {
+  if (!confirm('Clear all patient data and measurements? This cannot be undone.')) return;
+  document.getElementById('age').value = '';
+  document.getElementById('sex').value = 'male';
+  document.getElementById('weight').value = '';
+  document.getElementById('height').value = '';
+  document.getElementById('currentWeight').value = '';
+  document.getElementById('donorType').value = 'ddkt-dbd';
+  setTxDatetime('');
+  rows = [];
+  renderAll();
+});
+
+document.getElementById('recalculate').addEventListener('click', () => {
+  renderAll();
+  const flash = document.getElementById('recalcFlash');
+  flash.style.display = '';
+  flash.style.opacity = '1';
+  flash.style.transition = 'opacity 1.2s';
+  setTimeout(() => { flash.style.opacity = '0'; }, 400);
+  setTimeout(() => { flash.style.display = 'none'; }, 1700);
+});
+
+document.getElementById('loadLdkt').addEventListener('click', () => {
+  // Living-donor recipient, EGF, typical brisk recovery
+  document.getElementById('age').value = 48;
+  document.getElementById('sex').value = 'female';
+  document.getElementById('weight').value = 65;
+  document.getElementById('height').value = 165;
+  document.getElementById('currentWeight').value = '';
+  document.getElementById('donorType').value = 'ldkt';
+  const tx = new Date('2026-03-04T07:30');
+  setTxDatetime(fmtDatetimeLocal(tx));
+  const addH = (d, h) => { const x = new Date(d); x.setHours(x.getHours() + h); return fmtDatetimeLocal(x); };
+  rows = [
+    { datetime: addH(tx, 0),   cr: 6.8 },
+    { datetime: addH(tx, 8),   cr: 5.4 },
+    { datetime: addH(tx, 24),  cr: 3.2 },
+    { datetime: addH(tx, 48),  cr: 1.8 },
+    { datetime: addH(tx, 72),  cr: 1.3 },
+    { datetime: addH(tx, 96),  cr: 1.1 },
+    { datetime: addH(tx, 120), cr: 1.05 },
+  ];
+  renderAll();
+});
+
+document.getElementById('loadDdkt').addEventListener('click', () => {
+  // Deceased-donor recipient, slow graft function (slower decline than LDKT but not DGF)
+  document.getElementById('age').value = 62;
+  document.getElementById('sex').value = 'male';
+  document.getElementById('weight').value = 82;
+  document.getElementById('height').value = 178;
+  document.getElementById('currentWeight').value = 86;  // 4kg edema
+  document.getElementById('donorType').value = 'ddkt-dcd';
+  const tx = new Date('2026-03-04T14:00');
+  setTxDatetime(fmtDatetimeLocal(tx));
+  const addH = (d, h) => { const x = new Date(d); x.setHours(x.getHours() + h); return fmtDatetimeLocal(x); };
+  rows = [
+    { datetime: addH(tx, 0),   cr: 9.2 },
+    { datetime: addH(tx, 12),  cr: 8.4 },
+    { datetime: addH(tx, 24),  cr: 7.5 },
+    { datetime: addH(tx, 48),  cr: 5.8 },
+    { datetime: addH(tx, 72),  cr: 4.2 },
+    { datetime: addH(tx, 96),  cr: 3.1 },
+    { datetime: addH(tx, 120), cr: 2.4 },
+    { datetime: addH(tx, 144), cr: 2.0 },
+  ];
+  renderAll();
+});
+
+// ============ Init ============
+{
+  const tx = new Date();
+  tx.setMinutes(0, 0, 0);
+  setTxDatetime(fmtDatetimeLocal(tx));
+  const addH = (d, h) => { const x = new Date(d); x.setHours(x.getHours() + h); return fmtDatetimeLocal(x); };
+  rows = [
+    { datetime: addH(tx, 0),  cr: 6.0 },
+    { datetime: addH(tx, 24), cr: 3.5 },
+  ];
+}
+renderAll();
+</script>
+</body>
+</html>
