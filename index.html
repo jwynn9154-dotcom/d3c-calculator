@@ -67,7 +67,7 @@
     width: 100%;
     border: 0;
     display: block;
-    height: 2700px; /* fallback; script auto-fits to content */
+    height: 1900px; /* fallback; the calculator reports its real height via postMessage */
   }
   .fallback-link { font-size: 14px; color: var(--muted); margin-top: 8px; }
   .citation {
@@ -118,7 +118,7 @@
   <h2 class="prose" style="margin-top: 8px;">The calculator</h2>
   <div class="calc-section">
     <div class="calc-frame-wrap">
-      <iframe id="calc" src="calculator.html" title="D3C Calculator" loading="lazy"></iframe>
+      <iframe id="calc" src="calculator.html" title="D3C Calculator"></iframe>
     </div>
     <p class="fallback-link">
       Not loading, or want it full-screen? <a href="calculator.html" target="_blank" rel="noopener">Open the calculator in its own tab →</a>
@@ -209,38 +209,14 @@
 </div>
 
 <script>
-  // The calculator is served from the same origin (same Pages repo), so we can read
-  // its content height and size the iframe to fit, removing the inner scrollbar and
-  // keeping everything on one page scroll. Falls back to the CSS height if blocked.
-  (function () {
-    var calc = document.getElementById('calc');
-    function fit() {
-      try {
-        var doc = calc.contentWindow.document;
-        var h = Math.max(
-          doc.body.scrollHeight,
-          doc.documentElement.scrollHeight
-        );
-        if (h > 0) calc.style.height = h + 'px';
-      } catch (e) {
-        /* cross-origin or not ready; keep CSS fallback height */
-      }
+  // The calculator (calculator.html) measures its own height and posts it up to
+  // this page. We listen and size the iframe to match, so there is no inner
+  // scrollbar and no trailing gap. Works regardless of origin or extensions.
+  window.addEventListener('message', function (e) {
+    if (e.data && typeof e.data.d3cHeight === 'number' && e.data.d3cHeight > 0) {
+      document.getElementById('calc').style.height = e.data.d3cHeight + 'px';
     }
-    calc.addEventListener('load', function () {
-      fit();
-      // Re-fit when the calculator's own content changes (rows added, chart redraws).
-      try {
-        var doc = calc.contentWindow.document;
-        if (window.ResizeObserver) {
-          var ro = new ResizeObserver(fit);
-          ro.observe(doc.body);
-        } else {
-          setInterval(fit, 800);
-        }
-      } catch (e) { /* ignore */ }
-    });
-    window.addEventListener('resize', fit);
-  })();
+  });
 </script>
 </body>
 </html>

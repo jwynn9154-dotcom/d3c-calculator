@@ -1096,5 +1096,23 @@ document.getElementById('loadDdkt').addEventListener('click', () => {
 }
 renderAll();
 </script>
+<script>
+  // Report own height to a parent frame (the landing page) so it can size the
+  // iframe to fit. Uses postMessage so it works regardless of origin or extensions.
+  (function () {
+    function postHeight() {
+      var h = document.body.offsetHeight;
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ d3cHeight: h }, '*');
+      }
+    }
+    window.addEventListener('load', postHeight);
+    if (window.ResizeObserver) {
+      new ResizeObserver(postHeight).observe(document.body);
+    } else {
+      setInterval(postHeight, 800);
+    }
+  })();
+</script>
 </body>
 </html>
